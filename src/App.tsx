@@ -12,7 +12,7 @@ import { TicketPreview } from './components/TicketPreview';
 
 export default function App() {
   const [invoiceNumber, setInvoiceNumber] = useState(1237);
-  const [date, setDate] = useState(format(new Date(), 'dd/MM/yyyy'));
+  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [mainLogo, setMainLogo] = useState<string | undefined>(undefined);
   
   const [clientText, setClientText] = useState('');
@@ -79,21 +79,36 @@ export default function App() {
   const handleItemChange = (id: string, field: keyof InvoiceItem, value: any) => {
     setItems(items.map(item => {
       if (item.id === id) {
-        const updatedItem = { ...item, [field]: value };
+        let finalValue = value;
+        
+        // Validate quantity
+        if (field === 'quantity') {
+          finalValue = Math.max(1, parseInt(value) || 1);
+        }
+        
+        // Validate prices
+        if (field === 'priceNIO' || field === 'priceUSD') {
+          const parsed = parseFloat(value);
+          if (!isNaN(parsed) && parsed < 0) {
+            finalValue = 0;
+          }
+        }
+
+        const updatedItem = { ...item, [field]: finalValue };
         
         // Auto-fill product name and default price when selecting a product
         if (field === 'productId') {
           const product = PRODUCT_CATALOG.find(p => p.id === value);
           if (product) {
             updatedItem.productName = product.name;
-            updatedItem.priceUSD = product.defaultPriceUSD;
-            updatedItem.priceNIO = parseFloat((product.defaultPriceUSD * EXCHANGE_RATE).toFixed(2));
+            updatedItem.priceUSD = Math.max(0, product.defaultPriceUSD);
+            updatedItem.priceNIO = Math.max(0, parseFloat((product.defaultPriceUSD * EXCHANGE_RATE).toFixed(2)));
           }
         }
         
         // Auto-calculate USD when NIO changes
         if (field === 'priceNIO') {
-          const nio = parseFloat(value);
+          const nio = parseFloat(finalValue);
           if (!isNaN(nio)) {
             updatedItem.priceUSD = parseFloat((nio / EXCHANGE_RATE).toFixed(2));
           }
@@ -101,7 +116,7 @@ export default function App() {
         
         // Auto-calculate NIO when USD changes
         if (field === 'priceUSD') {
-          const usd = parseFloat(value);
+          const usd = parseFloat(finalValue);
           if (!isNaN(usd)) {
             updatedItem.priceNIO = parseFloat((usd * EXCHANGE_RATE).toFixed(2));
           }
@@ -126,7 +141,7 @@ export default function App() {
 
   const invoiceData: InvoiceData = {
     invoiceNumber: `A${invoiceNumber.toString().padStart(6, '0')}`,
-    date,
+    date: date.split('-').reverse().join('/'),
     client: clientData,
     items,
     shippingCostNIO,
@@ -243,6 +258,20 @@ export default function App() {
     }
   };
 
+  const handleResetForm = () => {
+    if (window.confirm('¿Estás seguro de que deseas limpiar todo el formulario? Se perderán todos los datos no guardados.')) {
+      setDate(format(new Date(), 'yyyy-MM-dd'));
+      setClientText('');
+      setClientData({ fullName: '', address: '', phone: '', transport: '' });
+      setItems([]);
+      setShippingCostNIO(0);
+      setDiscountNIO(0);
+      setCustomNote('');
+      setWarrantyText(DEFAULT_WARRANTY_TEXT);
+      setFeedback(null);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       {feedback && (
@@ -252,11 +281,21 @@ export default function App() {
       )}
       {/* Left Panel: Controls */}
       <div className="w-1/2 h-full overflow-y-auto border-r border-gray-200 bg-white p-6 shadow-sm z-10">
-        <div className="flex items-center gap-3 mb-8 pb-4 border-b border-gray-100">
-          <div className="bg-blue-600 p-2 rounded-lg">
-            <FileText className="w-6 h-6 text-white" />
+        <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-600 p-2 rounded-lg">
+              <FileText className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Generador de Facturas</h1>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Generador de Facturas</h1>
+          <button
+            onClick={handleResetForm}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
+            title="Limpiar formulario"
+          >
+            <Trash2 className="w-4 h-4" />
+            Limpiar
+          </button>
         </div>
 
         {/* General Info */}
@@ -281,7 +320,7 @@ export default function App() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
               <input 
-                type="text" 
+                type="date" 
                 value={date} 
                 onChange={(e) => setDate(e.target.value)}
                 className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
@@ -432,6 +471,7 @@ export default function App() {
                     <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Precio C$</label>
                     <input 
                       type="number" 
+                      min="0"
                       step="0.01"
                       value={item.priceNIO || ''}
                       onChange={(e) => handleItemChange(item.id, 'priceNIO', e.target.value)}
@@ -443,6 +483,7 @@ export default function App() {
                     <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Precio $</label>
                     <input 
                       type="number" 
+                      min="0"
                       step="0.01"
                       value={item.priceUSD || ''}
                       onChange={(e) => handleItemChange(item.id, 'priceUSD', e.target.value)}

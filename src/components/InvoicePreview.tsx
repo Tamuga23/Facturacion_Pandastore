@@ -201,14 +201,14 @@ export const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) 
                     <span className="w-1 h-1 rounded-full bg-blue-500"></span>
                     Pago
                   </h4>
-                  <p className="text-[10px] text-gray-500 leading-tight ml-3">{DEFAULT_PAYMENT_TERMS}</p>
+                  <p className="text-[10px] text-gray-500 leading-tight ml-3 whitespace-pre-wrap">{DEFAULT_PAYMENT_TERMS}</p>
                 </div>
                 <div>
                   <h4 className="font-bold text-xs flex items-center gap-2 mb-1" style={{ color: '#1a6ba0' }}>
                     <span className="w-1 h-1 rounded-full bg-blue-500"></span>
                     Garantía
                   </h4>
-                  <p className="text-[10px] text-gray-500 leading-tight ml-3">{data.warrantyText}</p>
+                  <p className="text-[10px] text-gray-500 leading-tight ml-3 whitespace-pre-wrap">{data.warrantyText}</p>
                 </div>
               </div>
 

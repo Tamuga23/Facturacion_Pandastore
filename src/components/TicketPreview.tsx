@@ -127,9 +127,9 @@ export const TicketPreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) =
             <span className="font-bold">NOTA:</span> {data.customNote}
           </div>
         )}
-        <div>
-          <p className="uppercase font-bold mb-1">Términos y Garantía</p>
-          <p>{data.warrantyText}</p>
+        <div className="text-left">
+          <p className="uppercase font-bold mb-1 text-center">Términos y Garantía</p>
+          <p className="whitespace-pre-wrap">{data.warrantyText}</p>
         </div>
         <p className="mt-4 font-bold text-sm">¡GRACIAS POR SU COMPRA!</p>
         <p className="text-[10px] mt-1">Generado por PandaStore</p>

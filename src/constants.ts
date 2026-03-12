@@ -32,5 +32,5 @@ export const PRODUCT_CATALOG: Product[] = [
   { id: '1188', name: '1188 - MagicCubic Proyector Portatil X7 1000 ANSI', defaultPriceUSD: 0 },
 ];
 
-export const DEFAULT_WARRANTY_TEXT = 'Los productos tienen garantía de 3 meses y cubre defectos de fabricación.';
-export const DEFAULT_PAYMENT_TERMS = 'El pago debe realizarse en su totalidad en el momento de la compra. Aceptamos efectivo, transferencias bancarias y tarjetas de crédito/débito.';
+export const DEFAULT_WARRANTY_TEXT = '1. Los productos vendidos por Panda Store tienen una garantía de [3] meses a partir de la fecha de compra.\n2. La garantía cubre defectos de fabricación y no incluye daños causados por mal uso o accidentes.';
+export const DEFAULT_PAYMENT_TERMS = '1. El pago debe realizarse en su totalidad en el momento de la compra, a menos que se haya acordado un plazo de crédito por escrito.\n2. Los métodos de pago aceptados son transferencia bancaria, efectivo y pago mediante Tarjeta de Credito/Debito';
