@@ -153,12 +153,21 @@ export default function App() {
 
   const registerSaleInExcel = async (data: InvoiceData) => {
     try {
+      // Remover el signo '+' del teléfono para evitar errores en Google Sheets
+      const dataToSend = {
+        ...data,
+        client: {
+          ...data.client,
+          phone: data.client.phone.replace(/\+/g, '')
+        }
+      };
+
       const response = await fetch('https://script.google.com/macros/s/AKfycbxhToto-MFJzbEJX2Mb-HK2VTGUbr1u_V0OpppjR3IU0YFPE6HVljjspQ3G3mc715_D/exec', {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(dataToSend),
         redirect: 'follow' // Importante para Google Apps Script
       });
       
@@ -215,7 +224,8 @@ export default function App() {
         pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
       }
       
-      pdf.save(`Factura_A${invoiceNumber.toString().padStart(6, '0')}.pdf`);
+      const formattedName = clientData.fullName.trim() ? `-${clientData.fullName.trim().replace(/\s+/g, '-')}` : '';
+      pdf.save(`Factura-${invoiceNumber}${formattedName}.pdf`);
       await registerSaleInExcel(invoiceData);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -247,7 +257,8 @@ export default function App() {
       });
       
       pdf.addImage(dataUrl, 'PNG', 0, 0, mmWidth, mmHeight);
-      pdf.save(`Ticket_A${invoiceNumber.toString().padStart(6, '0')}.pdf`);
+      const formattedName = clientData.fullName.trim() ? `-${clientData.fullName.trim().replace(/\s+/g, '-')}` : '';
+      pdf.save(`Ticket-${invoiceNumber}${formattedName}.pdf`);
       await registerSaleInExcel(invoiceData);
     } catch (error) {
       console.error('Error generating Ticket PDF:', error);
