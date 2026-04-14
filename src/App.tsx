@@ -11,18 +11,74 @@ import { InvoicePreview } from './components/InvoicePreview';
 import { TicketPreview } from './components/TicketPreview';
 
 export default function App() {
-  const [invoiceNumber, setInvoiceNumber] = useState(1237);
+  const [invoiceNumber, setInvoiceNumber] = useState<number | null>(null);
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [mainLogo, setMainLogo] = useState<string | undefined>(undefined);
   
   const [clientText, setClientText] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isLoadingInvoice, setIsLoadingInvoice] = useState(true);
   const [clientData, setClientData] = useState<ClientData>({
     fullName: '',
     address: '',
     phone: '',
     transport: '',
   });
+
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxi3PsbpoFz0jFhgflOu09HDuGq79o4P7A9lkpECIhxaz5vPHZNN-VTSIMDEsvj26Bg/exec';
+
+  useEffect(() => {
+    fetchLatestInvoiceNumber();
+  }, []);
+
+  const fetchLatestInvoiceNumber = async () => {
+    setIsLoadingInvoice(true);
+    setFeedback(null);
+    try {
+      // Agregamos un timestamp para evitar cache y redirect: 'follow' para Google Apps Script
+      const response = await fetch(`${SCRIPT_URL}?t=${Date.now()}`, {
+        method: 'GET',
+        redirect: 'follow'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const text = await response.text();
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (e) {
+        console.error('Response is not JSON:', text);
+        throw new Error('La respuesta del servidor no es un JSON válido. Verifica la publicación del script.');
+      }
+
+      console.log('Sync Result:', result);
+
+      if (result.status === 'success' && result.lastInvoiceNumber !== undefined) {
+        // Extraer solo los números (ej: "A001237" -> 1237)
+        const lastNumStr = result.lastInvoiceNumber.toString().replace(/\D/g, '');
+        const lastNum = lastNumStr ? parseInt(lastNumStr) : 999;
+        
+        setInvoiceNumber(lastNum + 1);
+        setFeedback({ message: 'Sincronizado con éxito', type: 'success' });
+        setTimeout(() => setFeedback(null), 3000);
+      } else {
+        setInvoiceNumber(1000);
+        setFeedback({ message: 'No se encontraron registros previos. Iniciando en 1000.', type: 'error' });
+      }
+    } catch (error) {
+      console.error('Error fetching latest invoice number:', error);
+      setInvoiceNumber(1000);
+      setFeedback({ 
+        message: 'Error de conexión con Google Sheets. Asegúrate de que el script esté publicado como "Cualquier persona".', 
+        type: 'error' 
+      });
+    } finally {
+      setIsLoadingInvoice(false);
+    }
+  };
 
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [shippingCostNIO, setShippingCostNIO] = useState(0);
@@ -140,7 +196,7 @@ export default function App() {
   };
 
   const invoiceData: InvoiceData = {
-    invoiceNumber: `A${invoiceNumber.toString().padStart(6, '0')}`,
+    invoiceNumber: invoiceNumber ? `A${invoiceNumber.toString().padStart(6, '0')}` : 'Cargando...',
     date: date.split('-').reverse().join('/'),
     client: clientData,
     items,
@@ -162,7 +218,7 @@ export default function App() {
         }
       };
 
-      const response = await fetch('https://script.google.com/macros/s/AKfycbxhToto-MFJzbEJX2Mb-HK2VTGUbr1u_V0OpppjR3IU0YFPE6HVljjspQ3G3mc715_D/exec', {
+      const response = await fetch(SCRIPT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8',
@@ -187,6 +243,8 @@ export default function App() {
 
       if (result.status === 'success') {
         setFeedback({ message: 'PDF generado y venta registrada en Excel', type: 'success' });
+        // Sincronizar de nuevo con el servidor para asegurar el siguiente número
+        fetchLatestInvoiceNumber();
       } else {
         console.error("El script devolvió un error:", result);
         setFeedback({ message: 'PDF guardado, pero falló el registro en Excel', type: 'error' });
@@ -199,7 +257,7 @@ export default function App() {
   };
 
   const incrementConsecutiveCode = () => {
-    setInvoiceNumber(prev => prev + 1);
+    setInvoiceNumber(prev => prev !== null ? prev + 1 : null);
   };
 
   const handleDownloadPDF = async () => {
@@ -317,16 +375,29 @@ export default function App() {
           </h2>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nº Factura</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-gray-700">Nº Factura</label>
+                <button 
+                  onClick={fetchLatestInvoiceNumber}
+                  disabled={isLoadingInvoice}
+                  className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 uppercase tracking-wider disabled:opacity-50"
+                >
+                  <Wand2 className={`w-3 h-3 ${isLoadingInvoice ? 'animate-spin' : ''}`} />
+                  {isLoadingInvoice ? 'Sincronizando...' : 'Sincronizar'}
+                </button>
+              </div>
               <div className="flex items-center">
-                <span className="bg-gray-100 border border-r-0 border-gray-300 px-3 py-2 rounded-l-md text-gray-500">A</span>
+                <span className="bg-gray-100 border border-r-0 border-gray-300 px-3 py-2 rounded-l-md text-gray-500 font-bold">A</span>
                 <input 
                   type="number" 
-                  value={invoiceNumber} 
+                  value={invoiceNumber || ''} 
                   onChange={(e) => setInvoiceNumber(parseInt(e.target.value) || 0)}
-                  className="w-full border border-gray-300 rounded-r-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  disabled={isLoadingInvoice}
+                  className="w-full border border-gray-300 rounded-r-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all disabled:bg-gray-50 font-bold text-blue-700"
+                  placeholder={isLoadingInvoice ? "Cargando..." : ""}
                 />
               </div>
+              {isLoadingInvoice && <p className="text-[10px] text-blue-600 mt-1 animate-pulse">Consultando base de datos en Google Sheets...</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
@@ -580,7 +651,7 @@ export default function App() {
         <div className="sticky bottom-0 bg-white pt-4 pb-6 border-t border-gray-200 mt-8 flex flex-col gap-3">
           <button 
             onClick={handleDownloadPDF}
-            disabled={isGeneratingPDF || items.length === 0}
+            disabled={isGeneratingPDF || items.length === 0 || isLoadingInvoice}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white py-3 px-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-colors shadow-md"
           >
             {isGeneratingPDF ? <Loader2 className="w-6 h-6 animate-spin" /> : <Download className="w-6 h-6" />}
@@ -588,7 +659,7 @@ export default function App() {
           </button>
           <button 
             onClick={handleDownloadTicketPDF}
-            disabled={isGeneratingPDF || items.length === 0}
+            disabled={isGeneratingPDF || items.length === 0 || isLoadingInvoice}
             className="w-full bg-gray-800 hover:bg-gray-900 disabled:bg-gray-400 text-white py-3 px-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-colors shadow-md"
           >
             {isGeneratingPDF ? <Loader2 className="w-6 h-6 animate-spin" /> : <Download className="w-6 h-6" />}
