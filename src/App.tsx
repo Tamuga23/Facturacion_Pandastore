@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Plus, Trash2, Download, Wand2, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { toPng } from 'html-to-image';
+import { toJpeg } from 'html-to-image';
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 
@@ -271,7 +271,12 @@ export default function App() {
       
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i] as HTMLElement;
-        const dataUrl = await toPng(page, { quality: 1, pixelRatio: 2 });
+        // Usamos JPEG con calidad 0.8 y pixelRatio 1.5 para reducir drásticamente el peso
+        const dataUrl = await toJpeg(page, { 
+          quality: 0.8, 
+          pixelRatio: 1.5,
+          backgroundColor: '#ffffff' 
+        });
         
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (page.offsetHeight * pdfWidth) / page.offsetWidth;
@@ -279,7 +284,8 @@ export default function App() {
         if (i > 0) {
           pdf.addPage();
         }
-        pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        // Usamos compresión FAST para el PDF
+        pdf.addImage(dataUrl, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
       }
       
       const formattedName = clientData.fullName.trim() ? `-${clientData.fullName.trim().replace(/\s+/g, '-')}` : '';
@@ -301,7 +307,12 @@ export default function App() {
     
     try {
       const ticketElement = ticketPreviewRef.current;
-      const dataUrl = await toPng(ticketElement, { quality: 1, pixelRatio: 2 });
+      // Usamos JPEG con calidad 0.8 y pixelRatio 1.5 para reducir drásticamente el peso
+      const dataUrl = await toJpeg(ticketElement, { 
+        quality: 0.8, 
+        pixelRatio: 1.5,
+        backgroundColor: '#ffffff'
+      });
       
       const mmWidth = 100; // 4 inches is ~101.6mm, 100mm is standard for wide thermal
       const pxWidth = ticketElement.offsetWidth;
@@ -314,7 +325,7 @@ export default function App() {
         format: [mmWidth, mmHeight]
       });
       
-      pdf.addImage(dataUrl, 'PNG', 0, 0, mmWidth, mmHeight);
+      pdf.addImage(dataUrl, 'JPEG', 0, 0, mmWidth, mmHeight, undefined, 'FAST');
       const formattedName = clientData.fullName.trim() ? `-${clientData.fullName.trim().replace(/\s+/g, '-')}` : '';
       pdf.save(`Ticket-${invoiceNumber}${formattedName}.pdf`);
       await registerSaleInExcel(invoiceData);
